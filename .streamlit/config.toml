@@ -1,0 +1,13 @@
+[client]
+showSidebarNavigation = false
+
+[theme]
+# El color verde exacto de tu diseño para los botones principales
+primaryColor = "#2eb872" 
+# Fondo claro general
+backgroundColor = "#f8fdfa"
+# Color de las tarjetas
+secondaryBackgroundColor = "#ffffff"
+# Color del texto principal
+textColor = "#111827"
+font = "sans serif"

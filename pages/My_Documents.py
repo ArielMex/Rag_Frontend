@@ -1,14 +1,88 @@
 import streamlit as st
 from components.sidebar import render_sidebar
-from utils.api_client import get_documents
+from utils.api_client import get_documents, upload_document, delete_document
+
+@st.dialog("Subir nuevo documento")
+def modal_subir_documento(sala_id):
+    st.write("Selecciona un archivo PDF para indexarlo en la base de conocimientos.")
+    archivo = st.file_uploader("Arrastra tu PDF aquí", type=["pdf"], label_visibility="collapsed")
+    
+    if st.button("Subir e Indexar", type="primary", use_container_width=True):
+        if archivo is not None:
+            with st.spinner("Subiendo y procesando vectores..."):
+                respuesta = upload_document(archivo.name, archivo.getvalue(), sala_id)
+                if respuesta.get("success"):
+                    st.success(f"¡{archivo.name} indexado correctamente!")
+                    st.rerun() 
+                else:
+                    st.error(f"Error al subir: {respuesta.get('error')}")
+        else:
+            st.warning("⚠️ Por favor selecciona un archivo primero.")
+
+# --- NUEVO MODAL DE CONFIRMACIÓN ---
+@st.dialog("Confirmar Eliminación")
+def modal_confirmar_eliminacion(doc_id, nombre_doc):
+    st.write(f"¿Estás seguro de que deseas eliminar el documento **{nombre_doc}**?")
+    st.write("Esta acción borrará el archivo físico y toda su información indexada en la IA. Esta acción no se puede deshacer.")
+    
+    col_cancel, col_delete = st.columns(2)
+    with col_cancel:
+        if st.button("Cancelar", use_container_width=True):
+            st.rerun() # Recargar cierra el modal sin hacer nada
+            
+    with col_delete:
+        if st.button("Sí, Eliminar", type="primary", use_container_width=True):
+            with st.spinner("Eliminando documento..."):
+                respuesta = delete_document(str(doc_id))
+                if respuesta.get("success"):
+                    st.success(f"Documento eliminado correctamente.")
+                    st.rerun() 
+                else:
+                    st.error(f"Error al eliminar: {respuesta.get('error')}")
 
 def my_documents_page():
+    if "filtro_docs" not in st.session_state:
+        st.session_state.filtro_docs = "Todos los Archivos"
+
+    SALA_ID_PRUEBA = "sala-prueba-123"
+    
     st.html("""
     <style>
         div[data-baseweb="input"] {
             border-radius: 2rem !important;
             background-color: #ffffff !important;
         }
+        
+        /* --- INICIO: ESTILO DE BOTONES PÍLDORA --- */
+        button[kind="secondary"] {
+            background-color: white !important;
+            color: #6b7280 !important;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 2rem !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            padding: 4px 16px !important;
+        }
+        button[kind="secondary"]:hover {
+            color: #111827 !important;
+            border-color: #d1d5db !important;
+            background-color: #f9fafb !important;
+        }
+        
+        button[kind="primary"] {
+            background-color: #111827 !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 2rem !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            padding: 4px 16px !important;
+        }
+        button[kind="primary"]:hover {
+            background-color: #1f2937 !important;
+            color: white !important;
+        }
+        
         button[data-testid="stPopoverButton"] {
             background: transparent !important;
             border: none !important;
@@ -22,6 +96,8 @@ def my_documents_page():
             color: #111827 !important;
             background: transparent !important;
         }
+        /* --- FIN: ESTILO DE BOTONES PÍLDORA --- */
+        
         div[data-testid="stVerticalBlockBorderWrapper"] {
             border-radius: 2rem !important;
             background-color: #ffffff !important;
@@ -45,75 +121,81 @@ def my_documents_page():
     with col_actions:
         col_search, col_btn = st.columns([2, 1])
         with col_search:
-            st.text_input("Buscar", placeholder="🔍 Buscar documentos...", label_visibility="collapsed")
+            busqueda = st.text_input("Buscar", placeholder="Buscar documentos...", label_visibility="collapsed")
         with col_btn:
-            st.button("☁️ Subir", type="primary", use_container_width=True)
+            if st.button("+ Subir", type="primary", use_container_width=True):
+                modal_subir_documento(SALA_ID_PRUEBA)
 
     st.divider()
 
-    # (Tus tarjetas de métricas superiores se mantienen igual)
-    st.html("""
+    documentos_reales = get_documents(SALA_ID_PRUEBA)
+    total_docs = len(documentos_reales)
+
+    st.html(f"""
     <div style="display: flex; gap: 20px; margin-bottom: 25px;">
         <div style="flex: 1; border: 1px solid #e5e7eb; border-radius: 2.5rem; padding: 20px 30px; background-color: white; display: flex; align-items: center; gap: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
             <div style="background-color: #ecfdf5; color: #10b981; min-width: 50px; height: 50px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 22px;">📄</div>
             <div>
-                <div style="font-size: 24px; font-weight: 700; color: #111827; line-height: 1.2;">24</div>
+                <div style="font-size: 24px; font-weight: 700; color: #111827; line-height: 1.2;">{total_docs}</div>
                 <div style="font-size: 13px; color: #6b7280; font-weight: 500;">Documentos Totales</div>
-            </div>
-        </div>
-        <div style="flex: 1; border: 1px solid #e5e7eb; border-radius: 2.5rem; padding: 20px 30px; background-color: white; display: flex; align-items: center; gap: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
-            <div style="background-color: #ecfdf5; color: #10b981; min-width: 50px; height: 50px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 22px;">🗃️</div>
-            <div>
-                <div style="font-size: 24px; font-weight: 700; color: #111827; line-height: 1.2;">148 MB</div>
-                <div style="font-size: 13px; color: #6b7280; font-weight: 500;">Almacenamiento Usado</div>
             </div>
         </div>
         <div style="flex: 1; border: 1px solid #e5e7eb; border-radius: 2.5rem; padding: 20px 30px; background-color: white; display: flex; align-items: center; gap: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
             <div style="background-color: #ecfdf5; color: #10b981; min-width: 50px; height: 50px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 22px;">✓</div>
             <div>
-                <div style="font-size: 24px; font-weight: 700; color: #111827; line-height: 1.2;">22</div>
+                <div style="font-size: 24px; font-weight: 700; color: #111827; line-height: 1.2;">{total_docs}</div>
                 <div style="font-size: 13px; color: #6b7280; font-weight: 500;">Indexados y Listos</div>
             </div>
         </div>
     </div>
     """)
 
-    st.html("""
-    <div style="display: flex; gap: 10px; margin-bottom: 25px;">
-        <div style="background-color: #111827; color: white; padding: 8px 24px; border-radius: 2rem; font-size: 13px; font-weight: 600; cursor: pointer;">Todos los Archivos</div>
-        <div style="background-color: white; color: #6b7280; border: 1px solid #e5e7eb; padding: 8px 24px; border-radius: 2rem; font-size: 13px; font-weight: 500; cursor: pointer;">Indexados</div>
-        <div style="background-color: white; color: #6b7280; border: 1px solid #e5e7eb; padding: 8px 24px; border-radius: 2rem; font-size: 13px; font-weight: 500; cursor: pointer;">Procesando</div>
-        <div style="background-color: white; color: #6b7280; border: 1px solid #e5e7eb; padding: 8px 24px; border-radius: 2rem; font-size: 13px; font-weight: 500; cursor: pointer;">Recientes</div>
-    </div>
-    """)
+    filtros = ["Todos los Archivos", "Indexados", "Recientes"]
+    cols_filtros = st.columns([1.5, 1.1, 1.1, 4], gap="small") 
+    
+    for i, filtro in enumerate(filtros):
+        with cols_filtros[i]:
+            if st.button(filtro, type="primary" if st.session_state.filtro_docs == filtro else "secondary", use_container_width=True):
+                st.session_state.filtro_docs = filtro
+                st.rerun()
+                
+    st.write("") 
 
-    # --- INICIO DE CONEXIÓN DINÁMICA ---
-    SALA_ID_PRUEBA = "sala-prueba-123"
-    documentos_reales = get_documents(SALA_ID_PRUEBA)
+    documentos_mostrar = documentos_reales
+    
+    if st.session_state.filtro_docs == "Indexados":
+        documentos_mostrar = [doc for doc in documentos_mostrar if doc.get('estado', 'indexado').lower() == 'indexado']
+    elif st.session_state.filtro_docs == "Recientes":
+        documentos_mostrar = sorted(documentos_mostrar, key=lambda x: str(x.get('created_at', '')), reverse=True)[:5]
+
+    if busqueda:
+        documentos_mostrar = [
+            doc for doc in documentos_mostrar 
+            if busqueda.lower() in doc.get('nombre_archivo', '').lower()
+        ]
     
     with st.container(border=True):
-        h_name, h_date, h_size, h_status, h_action = st.columns([4, 1.5, 1, 1.5, 0.5], vertical_alignment="center")
+        h_name, h_date, h_status, h_action = st.columns([5, 2, 2, 0.5], vertical_alignment="center")
         header_style = "<span style='color: #9ca3af; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;'>"
         
         h_name.html(f"{header_style}Nombre</span>")
         h_date.html(f"{header_style}Subido</span>")
-        h_size.html(f"{header_style}Tamaño</span>")
         h_status.html(f"{header_style}Estado</span>")
         
         st.divider() 
         
         if not documentos_reales:
-            st.info("Aún no hay documentos en esta sala. Ve al dashboard para subir tu primer PDF.")
+            st.info("Aún no hay documentos en esta sala. Haz clic en '+ Subir' para indexar tu primer PDF.")
+        elif not documentos_mostrar:
+            st.warning("No se encontraron documentos para los filtros o búsqueda actuales.")
         else:
-            for doc in documentos_reales:
-                # Extraemos los datos del diccionario que manda el backend (con fallbacks visuales)
+            for doc in documentos_mostrar:
                 nombre = doc.get('nombre_archivo', 'Documento Desconocido')
-                # Si el backend no devuelve fecha o tamaño aún, ponemos algo estético para no romper tu diseño
                 fecha = str(doc.get('created_at', 'Reciente'))[:10] 
                 bg_color = "#dcfce7"
                 icon_color = "#10b981"
                 
-                col_name, col_date, col_size, col_status, col_action = st.columns([4, 1.5, 1, 1.5, 0.5], vertical_alignment="center")
+                col_name, col_date, col_status, col_action = st.columns([5, 2, 2, 0.5], vertical_alignment="center")
                 
                 col_name.html(f"""
                 <div style="display: flex; align-items: center; gap: 15px;">
@@ -126,19 +208,21 @@ def my_documents_page():
                 """)
                 
                 col_date.html(f"<div style='font-size: 13px; color: #6b7280; font-weight: 500;'>{fecha}</div>")
-                col_size.html("<div style='font-size: 13px; color: #6b7280; font-weight: 500;'>N/A</div>")
                 
                 status_html = '<span style="background-color: #dcfce7; color: #166534; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;">✓ Indexado</span>'
                 col_status.html(status_html)
                 
                 with col_action:
                     with st.popover("···"):
-                        # Usamos doc['id'] para garantizar que cada botón sea 100% único, aunque los nombres se repitan
-                        if st.button("👁️ Ver Documento", key=f"view_{doc['id']}", use_container_width=True):
-                            st.toast(f"Abriendo {nombre}...")
+                        doc_id = doc.get('id', '')
+                        nombre_seguro = nombre.replace(' ', '%20')
+                        url_pdf = f"http://localhost:8000/static/{doc_id}_{nombre_seguro}"
+                        
+                        st.link_button("Ver Documento", url=url_pdf, use_container_width=True)
                             
-                        if st.button("🗑️ Eliminar", key=f"del_{doc['id']}", use_container_width=True, type="secondary"):
-                            st.toast(f"Eliminado {nombre} (Simulado)")
+                        # --- CÓDIGO ACTUALIZADO: Al hacer clic, abrimos el modal de confirmación ---
+                        if st.button("Eliminar", key=f"del_{doc_id}", use_container_width=True, type="secondary"):
+                            modal_confirmar_eliminacion(doc_id, nombre)
                 
                 st.write("") 
 

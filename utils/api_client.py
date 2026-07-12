@@ -99,3 +99,37 @@ def generar_quiz_api(sala_id: str, tema: str, cantidad_preguntas: int = 3) -> di
         return {"success": False, "error": "No se pudo conectar al servidor para generar la evaluación."}
     except Exception as e:
         return {"success": False, "error": f"Error inesperado: {str(e)}"}
+
+def delete_document(doc_id: str):
+    """Llama al endpoint DELETE para borrar el documento del sistema completo."""
+    try:
+        url = f"{BASE_URL}/documents/{doc_id}"
+        response = requests.delete(url)
+        
+        if response.status_code == 200:
+            return {"success": True, "message": response.json().get("message")}
+        else:
+            return {"success": False, "error": response.json().get("detail", "Error desconocido")}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    
+def send_chat_message(pregunta: str, sala_id: str, modo_mini: bool = False):
+    """
+    Envía un mensaje al endpoint de chat de la IA, indicando si estamos en el dashboard.
+    """
+    try:
+        url = f"{BASE_URL}/chat/"
+        payload = {
+            "pregunta": pregunta,
+            "sala_id": sala_id,
+            "modo_mini": modo_mini
+        }
+        
+        response = requests.post(url, json=payload)
+        
+        if response.status_code == 200:
+            return response.json().get("respuesta")
+        else:
+            return f"Error del servidor: {response.json().get('detail', 'Desconocido')}"
+    except Exception as e:
+        return f"Error de conexión: {str(e)}"

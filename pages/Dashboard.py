@@ -8,11 +8,10 @@ from components.documentos.upload_zone import render_upload_zone
 from components.chat.chat_panel import render_chat_conversation
 
 def dashboard_page():
-    # --- INYECCIÓN DE CSS (Mata el header y da estilo al Uploader) ---
+    # --- INYECCIÓN DE CSS ---
     st.html("""
     <style>
-
-        /* 2. ESTILO DEL DRAG & DROP (Zona de subida) */
+        /* ESTILO DEL DRAG & DROP (Zona de subida) */
         div[data-testid="stFileUploader"] {
             border: 2px dashed #e5e7eb !important;
             border-radius: 1.5rem !important;
@@ -42,9 +41,9 @@ def dashboard_page():
         render_upload_zone()
 
     with col_chat:
-        # Reutilizamos tu panel de chat, metido en una tarjeta alta
+        # Reutilizamos tu panel de chat, indicando que active el "modo mini"
         with st.container(border=True, height=600):
-            render_chat_conversation()
+            render_chat_conversation(modo_mini=True)
 
 if __name__ == "__main__":
     dashboard_page()

@@ -4,7 +4,6 @@ def render_quiz_panel(datos_quiz):
     """
     Renderiza el panel de evaluación dinámicamente basado en un diccionario JSON.
     """
-    # Inicializamos el estado para este quiz específico si no existe
     if "quiz_completado" not in st.session_state:
         st.session_state.quiz_completado = False
 
@@ -28,7 +27,6 @@ def render_quiz_panel(datos_quiz):
     </div>
     """)
 
-    # Usamos formularios nativos de Streamlit para manejar las respuestas de forma limpia
     with st.form(key="quiz_form", border=False):
         respuestas_usuario = {}
         puntaje_actual = 0
@@ -44,7 +42,6 @@ def render_quiz_panel(datos_quiz):
             </div>
             """)
             
-            # Renderizamos los radio buttons nativos
             respuestas_usuario[p['id']] = st.radio(
                 label=f"Pregunta {idx}", 
                 options=p["opciones"], 
@@ -54,7 +51,6 @@ def render_quiz_panel(datos_quiz):
                 disabled=is_done
             )
             
-            # Si ya se envió, mostramos retroalimentación individual
             if is_done:
                 es_correcta = respuestas_usuario[p['id']] == p["respuesta_correcta"]
                 if es_correcta:
@@ -64,24 +60,24 @@ def render_quiz_panel(datos_quiz):
                     st.error(f"Incorrecto. La respuesta correcta era: {p['respuesta_correcta']}")
             st.divider()
 
-        # Botón de envío
-        if not is_done:
-            st.html('<style>div[data-testid="stFormSubmitButton"] button { background-color: #a7f3d0 !important; color: white !important; border: none !important; width: 100%;} div[data-testid="stFormSubmitButton"] button:hover { background-color: #2eb872 !important; }</style>')
-            enviado = st.form_submit_button("Enviar Respuestas")
-            if enviado:
-                # Validar que respondió todas
-                if None in respuestas_usuario.values():
-                    st.warning("⚠️ Por favor, responde todas las preguntas antes de enviar.")
-                else:
-                    st.session_state.quiz_completado = True
-                    st.rerun()
+        # AQUÍ ESTÁ EL CAMBIO PRINCIPAL:
+        # Ya no usamos "if not is_done", siempre mostramos el botón, pero lo deshabilitamos si el quiz terminó.
+        st.html('<style>div[data-testid="stFormSubmitButton"] button { background-color: #a7f3d0 !important; color: white !important; border: none !important; width: 100%;} div[data-testid="stFormSubmitButton"] button:hover { background-color: #2eb872 !important; }</style>')
+        
+        enviado = st.form_submit_button("Enviar Respuestas", disabled=is_done)
+        
+        if enviado and not is_done:
+            if None in respuestas_usuario.values():
+                st.warning("⚠️ Por favor, responde todas las preguntas antes de enviar.")
+            else:
+                st.session_state.quiz_completado = True
+                st.rerun()
 
     # Botón de reinicio (fuera del formulario)
     if is_done:
         st.info(f"Obtuviste {puntaje_actual} de {total_q} respuestas correctas.")
         if st.button("↻ Repetir Evaluación", use_container_width=True):
             st.session_state.quiz_completado = False
-            # Limpiamos las respuestas guardadas en sesión
             for p in preguntas:
                 if f"q_{p['id']}" in st.session_state:
                     del st.session_state[f"q_{p['id']}"]

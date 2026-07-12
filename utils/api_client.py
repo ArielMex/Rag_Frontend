@@ -44,3 +44,58 @@ def get_documents(sala_id: str) -> list:
         return []
     except Exception:
         return []
+
+def send_chat_message(pregunta: str, sala_id: str) -> dict:
+    """
+    Envía una pregunta al backend para que Gemini genere una respuesta 
+    basada en los documentos de la sala.
+    """
+    url = f"{BASE_URL}/chat/" # Apuntamos a la nueva ruta
+    
+    # El backend espera recibir un JSON con 'pregunta' y 'sala_id'
+    payload = {
+        "pregunta": pregunta,
+        "sala_id": sala_id
+    }
+    
+    try:
+        # Usamos 'json=payload' porque en FastAPI (backend) usamos un Pydantic BaseModel
+        response = requests.post(url, json=payload)
+        
+        if response.status_code == 200:
+            # Extraemos directamente la "respuesta" que armamos en nuestro chat.py del backend
+            return {"success": True, "data": response.json().get("respuesta", "")}
+        else:
+            return {"success": False, "error": f"Error {response.status_code}: {response.text}"}
+            
+    except requests.exceptions.ConnectionError:
+        return {"success": False, "error": "No se pudo conectar al servidor de chat."}
+    except Exception as e:
+        return {"success": False, "error": f"Error inesperado: {str(e)}"}
+    
+def generar_quiz_api(sala_id: str, tema: str, cantidad_preguntas: int = 3) -> dict:
+    """
+    Se comunica con el backend para solicitar un JSON estructurado 
+    con las preguntas del quiz generadas por Gemini.
+    """
+    url = f"{BASE_URL}/chat/quiz" 
+    
+    payload = {
+        "sala_id": sala_id,
+        "tema": tema,
+        "cantidad_preguntas": cantidad_preguntas
+    }
+    
+    try:
+        response = requests.post(url, json=payload)
+        
+        if response.status_code == 200:
+            # El backend (Pydantic) ya nos devuelve el JSON estructurado
+            return {"success": True, "data": response.json()}
+        else:
+            return {"success": False, "error": f"Error {response.status_code}: {response.text}"}
+            
+    except requests.exceptions.ConnectionError:
+        return {"success": False, "error": "No se pudo conectar al servidor para generar la evaluación."}
+    except Exception as e:
+        return {"success": False, "error": f"Error inesperado: {str(e)}"}

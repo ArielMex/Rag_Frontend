@@ -4,20 +4,40 @@ import re
 from components.sidebar import render_sidebar
 from utils.api_client import send_chat_message, generar_quiz_api
 
-# Asumimos que guardaste el código anterior del quiz en components/chat/quiz_panel.py
+# Importamos ambos paneles
 from components.chat.quiz_panel import render_quiz_panel
+from components.chat.flashcard_panel import render_flashcards_panel
 
-def detectar_intencion_quiz(mensaje: str):
+def detectar_intencion(mensaje: str):
     """
-    Analiza el mensaje usando expresiones regulares.
-    Retorna el tema si detecta que el usuario quiere un quiz, de lo contrario retorna None.
+    Analiza si el usuario quiere un quiz o flashcards.
+    Retorna (tema, cantidad, tipo_panel)
     """
-    patron = r"(?:genera|crea|haz|hazme)\s+(?:un\s+)?(?:quiz|cuestionario|examen|evaluacion|evaluación)\s+(?:de|sobre)\s+(.+)"
-    match = re.search(patron, mensaje, re.IGNORECASE)
+    # 1. ¿Quiere Flashcards? (Ej: "Genera 5 flashcards sobre git")
+    patron_fc = r"(?:genera|crea|haz|hazme)\s+(?:unas\s+)?(\d+)?\s*(?:flashcards|tarjetas|fichas)(?:\s+de\s+estudio)?\s+(?:de|sobre)\s+(.+)"
+    match_fc = re.search(patron_fc, mensaje, re.IGNORECASE)
     
-    if match:
-        return match.group(1).strip()
-    return None
+    if match_fc:
+        cantidad = int(match_fc.group(1)) if match_fc.group(1) else 3
+        tema = match_fc.group(2).strip().rstrip('.!?')
+        return tema, cantidad, "flashcards"
+
+    # 2. ¿Quiere Quiz? 
+    patron_quiz = r"(?:genera|crea|haz|hazme)\s+(?:un\s+)?(?:quiz|cuestionario|examen|evaluacion|evaluación)"
+    if re.search(patron_quiz, mensaje, re.IGNORECASE):
+        cantidad = 3
+        match_cantidad = re.search(r"(\d+)\s+preguntas?", mensaje, re.IGNORECASE)
+        if match_cantidad:
+            cantidad = int(match_cantidad.group(1))
+            
+        mensaje_limpio = re.sub(r"(?:de\s+)?\d+\s+preguntas?", "", mensaje, flags=re.IGNORECASE)
+        match_tema = re.search(r"(?:de|sobre)\s+(.+)", mensaje_limpio, re.IGNORECASE)
+        
+        if match_tema:
+            tema = match_tema.group(1).strip().rstrip('.!?')
+            return tema, cantidad, "quiz"
+
+    return None, None, None
 
 def render_interfaz_chat():
     """Renderiza el componente del Chat de Lumina y maneja el enrutamiento de peticiones."""
@@ -57,7 +77,7 @@ def render_interfaz_chat():
                     """)
 
         # Caja de texto y lógica de intercepción
-        if prompt := st.chat_input("Pide un quiz (ej. 'haz un quiz de redes') o chatea normal...", key="chat_eval_input"):
+        if prompt := st.chat_input("Escribe aqui lo que quieres, un quiz, flashcard o chatea normal...", key="chat_eval_input"):
             
             st.session_state.historial_chat.append({"role": "user", "content": prompt})
             
@@ -74,21 +94,21 @@ def render_interfaz_chat():
                 </div>
                 """)
                 
-                # ---------------------------------------------------------
-                # EL CEREBRO DE ENRUTAMIENTO (Chat Normal vs Quiz)
-                # ---------------------------------------------------------
-                tema_para_quiz = detectar_intencion_quiz(prompt)
+                # EL CEREBRO DE ENRUTAMIENTO (Chat Normal vs Quiz vs Flashcards)
+                tema_detectado, cantidad_preguntas, tipo_panel = detectar_intencion(prompt)
                 
-                if tema_para_quiz:
-                    with st.spinner(f"Diseñando evaluación sobre '{tema_para_quiz}'..."):
-                        respuesta_api = generar_quiz_api(sala_id=ID_SALA_PRUEBA, tema=tema_para_quiz)
+                if tema_detectado:
+                    with st.spinner(f"Diseñando {cantidad_preguntas} {tipo_panel} sobre '{tema_detectado}'..."):
+                        # Le pasamos la cantidad a la API (reutilizamos la misma API del quiz)
+                        respuesta_api = generar_quiz_api(sala_id=ID_SALA_PRUEBA, tema=tema_detectado, cantidad_preguntas=cantidad_preguntas)
                         
                         if respuesta_api["success"]:
                             st.session_state.datos_quiz = respuesta_api["data"]
+                            st.session_state.tipo_panel_activo = tipo_panel # Guardamos qué pidió el usuario
                             st.session_state.quiz_activo = True
-                            texto_ia = f"¡Listo! He generado tu cuestionario sobre **{tema_para_quiz}**. El panel interactivo se ha abierto a la derecha."
+                            texto_ia = f"¡Listo! He generado tu material de **{tipo_panel}** sobre **{tema_detectado}**. El panel interactivo se ha abierto a la derecha."
                         else:
-                            texto_ia = f"Hubo un error al generar el quiz: {respuesta_api['error']}"
+                            texto_ia = f"Hubo un error al generar: {respuesta_api['error']}"
                 else:
                     with st.spinner("Lumina está pensando..."):
                         respuesta_api = send_chat_message(pregunta=prompt, sala_id=ID_SALA_PRUEBA)
@@ -97,20 +117,30 @@ def render_interfaz_chat():
                             texto_ia = respuesta_api["data"]
                         else:
                             texto_ia = f"Hubo un error de conexión: {respuesta_api['error']}"
-                # ---------------------------------------------------------
 
             # Guardamos la respuesta final y recargamos
             st.session_state.historial_chat.append({"role": "assistant", "content": texto_ia})
             st.rerun()
 
 def chat_page():
-    # Inicialización de estados simplificada
+    # Inicialización de estados con el nuevo mensaje de bienvenida
     if "historial_chat" not in st.session_state:
-        st.session_state.historial_chat = []
+        mensaje_bienvenida = (
+            "¡Hola! Soy Lumina, tu asistente de estudio avanzado. Estoy lista para resolver "
+            "cualquier duda profunda sobre tus documentos. Puedes pedirme que genere "
+            "Quizzes interactivos o Tarjetas de Estudio (Flashcards) para poner a prueba tu conocimiento. "
+            "(Ej: 'Hazme un quiz de 5 preguntas sobre bases de datos')."
+        )
+        st.session_state.historial_chat = [
+            {"role": "assistant", "content": mensaje_bienvenida}
+        ]
+        
     if "quiz_activo" not in st.session_state:
         st.session_state.quiz_activo = False
     if "datos_quiz" not in st.session_state:
         st.session_state.datos_quiz = None
+    if "tipo_panel_activo" not in st.session_state:
+        st.session_state.tipo_panel_activo = "quiz" # Por defecto
 
     # Estilos globales de la página
     st.html("""
@@ -152,14 +182,17 @@ def chat_page():
             render_interfaz_chat()
     else:
         # MODO 2: Pantalla dividida
-        col_chat, col_quiz = st.columns(2, gap="large")
+        col_chat, col_panel = st.columns(2, gap="large")
         with col_chat:
             render_interfaz_chat()
-        with col_quiz:
-            # Aquí inyectamos tu componente aislado pasándole los datos reales
+        with col_panel:
             if st.session_state.datos_quiz:
                 with st.container(border=True, height=750):
-                    render_quiz_panel(st.session_state.datos_quiz)
+                    # DECIDIMOS QUÉ COMPONENTE PINTAR BASADO EN EL ESTADO
+                    if st.session_state.get("tipo_panel_activo") == "flashcards":
+                        render_flashcards_panel(st.session_state.datos_quiz)
+                    else:
+                        render_quiz_panel(st.session_state.datos_quiz)
             else:
                 st.error("⚠️ No se encontraron datos para la evaluación.")
 

@@ -2,7 +2,7 @@ import streamlit as st
 import datetime
 
 def render_top_bar():
-    col_text, col_search, col_bell = st.columns([3, 1.5, 0.2], vertical_alignment="center")
+    col_text, col_search, col_bell = st.columns([3, 1.5, 0.3], vertical_alignment="center")
     
     with col_text:
         hora = datetime.datetime.now().hour
@@ -16,7 +16,7 @@ def render_top_bar():
         """)
         
     with col_search:
-        st.text_input("Buscar", placeholder="🔍 Buscar documentos...", label_visibility="collapsed")
+        st.text_input("Buscar", placeholder="Buscar documentos...", label_visibility="collapsed")
         
     with col_bell:
-        st.button("🔔", key="bell_btn", use_container_width=True)
+        st.button(" ", icon=":material/notifications:", key="bell_btn", use_container_width=True)

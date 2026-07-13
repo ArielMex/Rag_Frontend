@@ -45,13 +45,13 @@ def my_documents_page():
     with col_actions:
         col_search, col_btn = st.columns([2, 1])
         with col_search:
-            st.text_input("Buscar", placeholder="🔍 Buscar documentos...", label_visibility="collapsed")
+            st.text_input("Buscar", placeholder="Buscar documentos...", label_visibility="collapsed")
         with col_btn:
-            st.button("☁️ Subir", type="primary", use_container_width=True)
+            # Agregamos el icono de upload aquí y quitamos texto extra
+            st.button("Subir", icon=":material/upload:", type="primary", use_container_width=True)
 
     st.divider()
 
-    # (Tus tarjetas de métricas superiores se mantienen igual)
     st.html("""
     <div style="display: flex; gap: 20px; margin-bottom: 25px;">
         <div style="flex: 1; border: 1px solid #e5e7eb; border-radius: 2.5rem; padding: 20px 30px; background-color: white; display: flex; align-items: center; gap: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
@@ -87,7 +87,7 @@ def my_documents_page():
     </div>
     """)
 
-    # --- INICIO DE CONEXIÓN DINÁMICA ---
+
     SALA_ID_PRUEBA = "sala-prueba-123"
     documentos_reales = get_documents(SALA_ID_PRUEBA)
     
@@ -106,9 +106,9 @@ def my_documents_page():
             st.info("Aún no hay documentos en esta sala. Ve al dashboard para subir tu primer PDF.")
         else:
             for doc in documentos_reales:
-                # Extraemos los datos del diccionario que manda el backend (con fallbacks visuales)
+               
                 nombre = doc.get('nombre_archivo', 'Documento Desconocido')
-                # Si el backend no devuelve fecha o tamaño aún, ponemos algo estético para no romper tu diseño
+                
                 fecha = str(doc.get('created_at', 'Reciente'))[:10] 
                 bg_color = "#dcfce7"
                 icon_color = "#10b981"
@@ -133,11 +133,12 @@ def my_documents_page():
                 
                 with col_action:
                     with st.popover("···"):
-                        # Usamos doc['id'] para garantizar que cada botón sea 100% único, aunque los nombres se repitan
-                        if st.button("👁️ Ver Documento", key=f"view_{doc['id']}", use_container_width=True):
+                        
+                        # Reemplazamos los emojis por Material Icons nativos
+                        if st.button("Ver Documento", icon=":material/visibility:", key=f"view_{doc['id']}", use_container_width=True):
                             st.toast(f"Abriendo {nombre}...")
                             
-                        if st.button("🗑️ Eliminar", key=f"del_{doc['id']}", use_container_width=True, type="secondary"):
+                        if st.button("Eliminar", icon=":material/delete:", key=f"del_{doc['id']}", use_container_width=True, type="secondary"):
                             st.toast(f"Eliminado {nombre} (Simulado)")
                 
                 st.write("") 

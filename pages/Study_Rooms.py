@@ -48,7 +48,7 @@ def study_rooms_page():
             padding: 0.5rem 0.8rem !important;
         }
         div[data-testid="stButton"] button {
-            border-radius: 2rem !important;
+            border-radius: 3rem !important;
             font-weight: 600 !important;
         }
         div[data-baseweb="input"] {
@@ -82,9 +82,9 @@ def study_rooms_page():
     with col_actions:
         search_col, add_col = st.columns([1.5, 1])
         with search_col:
-            st.text_input("Buscar", placeholder="🔍 Buscar salas...", label_visibility="collapsed")
+            st.text_input("Buscar", placeholder="Buscar salas...", label_visibility="collapsed")
         with add_col:
-            st.button("＋ Crear Nueva Sala", type="primary", use_container_width=True)
+            st.button("Nueva Sala", icon=":material/add:", type="primary", use_container_width=True)
 
     st.divider()
 

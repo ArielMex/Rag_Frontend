@@ -13,8 +13,8 @@ except ImportError:
     jwt = None
 
 # Recuerda cambiar esto por st.secrets en producción
-CLIENT_ID = "309045838328-v6e5q6aoaigfqlm6v8bt293ldkp75m3o.apps.googleusercontent.com"
-CLIENT_SECRET = "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"
+CLIENT_ID = st.secrets["GOOGLE_CLIENT_ID"]
+CLIENT_SECRET = ""
 REDIRECT_URI = "http://localhost:8502"
 
 oauth2 = None
@@ -192,7 +192,7 @@ def render_login_form():
             else:
                 st.link_button(
                     "Continuar con Google",
-                    "https://accounts.google.com/o/oauth2/v2/auth?client_id=309045838328-v6e5q6aoaigfqlm6v8bt293ldkp75m3o.apps.googleusercontent.com&redirect_uri=http://localhost:8502&response_type=code&scope=openid%20email%20profile&access_type=offline&prompt=consent",
+                    "",
                     use_container_width=True,
                 )
 

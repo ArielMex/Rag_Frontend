@@ -24,7 +24,7 @@ def render_flashcards_panel(datos_quiz):
             st.markdown(f"**{idx + 1}.** {p['pregunta']}")
             
             # Reverso (oculto en un acordeón)
-            with st.expander("Girar tarjeta ⬇️"):
+            with st.expander("Girar tarjeta ⬇"):
                 st.success(f"**Concepto clave:** {p['respuesta_correcta']}")
                 
     if st.button("Cerrar Flashcards", use_container_width=True):

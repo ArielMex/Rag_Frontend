@@ -2,6 +2,7 @@ import streamlit as st
 import re
 import html
 from utils.images import get_image_base64
+from utils.api_client import registrar_usuario, generar_username
 
 # --- FUNCIONES DE SEGURIDAD INTEGRADAS ---
 def sanitize_input(raw_input: str) -> str:
@@ -12,7 +13,7 @@ def sanitize_input(raw_input: str) -> str:
     safe_text = re.sub(r'\s+', ' ', safe_text).strip()
     sql_patterns = [r'(?i)\bdrop\b', r'(?i)\bdelete\b', r'(?i)\btruncate\b', r'(?i)\bunion\b', r'--', r';']
     for pattern in sql_patterns:
-         safe_text = re.sub(pattern, '[BLOQUEADO]', safe_text)
+        safe_text = re.sub(pattern, '[BLOQUEADO]', safe_text)
     return safe_text
 
 def validar_contrasena(password: str) -> tuple[bool, str]:
@@ -149,8 +150,20 @@ def render_register_form():
                     elif password != confirm:
                         st.error("Las contraseñas no coinciden.")
                     else:
-                        st.success("¡La cuenta se ha creado correctamente! Ya puedes iniciar sesión.")
-            
+                        username_generado = generar_username(safe_name)
+                        payload = {
+                            "email": safe_email,
+                            "username": username_generado,
+                            "full_name": safe_name,
+                            "password": password
+                        }
+                        resultado = registrar_usuario(payload)
+
+                        if resultado["success"]:
+                            st.success("¡La cuenta se ha creado correctamente! Ya puedes iniciar sesión.")
+                            st.session_state.auth_view = "login"
+                        else:
+                            st.error(resultado["error"])
             # --- Divider con el "or" ---
             st.markdown("""
                 <div style='display: flex; align-items: center; text-align: center; margin: 5px 0;'>

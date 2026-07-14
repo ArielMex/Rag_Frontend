@@ -1,6 +1,7 @@
 import streamlit as st
 from utils.security import sanitize_input
 from utils.images import get_image_base64
+from utils.api_client import login
 
 def render_login_form():
     st.markdown("""
@@ -88,8 +89,16 @@ def render_login_form():
                     safe_email = sanitize_input(email)
                     
                     if safe_email and password:
-                        st.session_state.logged_in = True
-                        st.rerun()
+                        resultado = login(safe_email, password)
+
+                        if resultado["success"]:
+                            datos = resultado["data"]
+                            st.session_state.access_token = datos["access_token"]
+                            st.session_state.refresh_token = datos["refresh_token"]
+                            st.session_state.logged_in = True
+                            st.rerun()
+                        else:
+                            st.error(resultado["error"])
                     else:
                         st.error("Por favor, ingresa tu correo y contraseña.")
             

@@ -8,7 +8,6 @@ from components.documentos.upload_zone import render_upload_zone
 from components.chat.chat_panel import render_chat_conversation
 
 def dashboard_page():
-    # --- INYECCIÓN DE CSS ---
     st.html("""
     <style>
         /* ESTILO DEL DRAG & DROP (Zona de subida) */

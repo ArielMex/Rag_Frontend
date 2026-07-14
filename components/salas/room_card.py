@@ -57,4 +57,4 @@ def render_room_card(room):
 
         with col_btn:
             btn_type = "primary" if room['live'] else "secondary"
-            st.button("Unirse →", key=f"join_{room['id']}", type=btn_type, use_container_width=True)
+            st.button("Unirse", key=f"join_{room['id']}", type=btn_type, use_container_width=True)

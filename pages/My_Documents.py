@@ -1,4 +1,5 @@
 import streamlit as st
+import urllib.parse
 from components.sidebar import render_sidebar
 from utils.api_client import get_documents, upload_document, delete_document
 
@@ -19,7 +20,6 @@ def modal_subir_documento(sala_id):
         else:
             st.warning("⚠️ Por favor selecciona un archivo primero.")
 
-# --- NUEVO MODAL DE CONFIRMACIÓN ---
 @st.dialog("Confirmar Eliminación")
 def modal_confirmar_eliminacion(doc_id, nombre_doc):
     st.write(f"¿Estás seguro de que deseas eliminar el documento **{nombre_doc}**?")
@@ -28,7 +28,7 @@ def modal_confirmar_eliminacion(doc_id, nombre_doc):
     col_cancel, col_delete = st.columns(2)
     with col_cancel:
         if st.button("Cancelar", use_container_width=True):
-            st.rerun() # Recargar cierra el modal sin hacer nada
+            st.rerun() 
             
     with col_delete:
         if st.button("Sí, Eliminar", type="primary", use_container_width=True):
@@ -53,7 +53,6 @@ def my_documents_page():
             background-color: #ffffff !important;
         }
         
-        /* --- INICIO: ESTILO DE BOTONES PÍLDORA --- */
         button[kind="secondary"] {
             background-color: white !important;
             color: #6b7280 !important;
@@ -96,7 +95,6 @@ def my_documents_page():
             color: #111827 !important;
             background: transparent !important;
         }
-        /* --- FIN: ESTILO DE BOTONES PÍLDORA --- */
         
         div[data-testid="stVerticalBlockBorderWrapper"] {
             border-radius: 2rem !important;
@@ -123,12 +121,16 @@ def my_documents_page():
         with col_search:
             busqueda = st.text_input("Buscar", placeholder="Buscar documentos...", label_visibility="collapsed")
         with col_btn:
-            if st.button("+ Subir", type="primary", use_container_width=True):
+            # Icono restaurado en el botón Subir
+            if st.button("Subir", icon=":material/upload:", type="primary", use_container_width=True):
                 modal_subir_documento(SALA_ID_PRUEBA)
 
     st.divider()
 
     documentos_reales = get_documents(SALA_ID_PRUEBA)
+    if documentos_reales is None:
+        documentos_reales = []
+        
     total_docs = len(documentos_reales)
 
     st.html(f"""
@@ -161,7 +163,7 @@ def my_documents_page():
                 
     st.write("") 
 
-    documentos_mostrar = documentos_reales
+    documentos_mostrar = documentos_reales.copy()
     
     if st.session_state.filtro_docs == "Indexados":
         documentos_mostrar = [doc for doc in documentos_mostrar if doc.get('estado', 'indexado').lower() == 'indexado']
@@ -215,13 +217,15 @@ def my_documents_page():
                 with col_action:
                     with st.popover("···"):
                         doc_id = doc.get('id', '')
-                        nombre_seguro = nombre.replace(' ', '%20')
+                        
+                        nombre_seguro = urllib.parse.quote(nombre)
                         url_pdf = f"http://localhost:8000/static/{doc_id}_{nombre_seguro}"
                         
-                        st.link_button("Ver Documento", url=url_pdf, use_container_width=True)
+                        # Icono restaurado en el botón Ver Documento
+                        st.link_button("Ver Documento", url=url_pdf, icon=":material/visibility:", use_container_width=True)
                             
-                        # --- CÓDIGO ACTUALIZADO: Al hacer clic, abrimos el modal de confirmación ---
-                        if st.button("Eliminar", key=f"del_{doc_id}", use_container_width=True, type="secondary"):
+                        # Icono restaurado en el botón Eliminar
+                        if st.button("Eliminar", icon=":material/delete:", key=f"del_{doc_id}", use_container_width=True, type="secondary"):
                             modal_confirmar_eliminacion(doc_id, nombre)
                 
                 st.write("") 

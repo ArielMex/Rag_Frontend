@@ -1,7 +1,7 @@
 import streamlit as st
 from components.sidebar import render_sidebar
 from components.salas.room_card import render_room_card
-from utils.api_client import obtener_salas, crear_sala
+from utils.api_client import obtener_mis_salas, obtener_salas, crear_sala
 
 # Respaldo local con la estructura del Backend por si la API está vacía o apagada
 ROOMS_MOCK = [
@@ -25,13 +25,17 @@ ROOMS_MOCK = [
 FILTERS = ["Todas", "En vivo", "Mis Salas", "Programadas"]
 
 def study_rooms_page():
+    # --- 0. EXTRAER ID DE USUARIO LOGUEADO ---
+    # Buscamos el ID del usuario en st.session_state. Si no está logueado, usamos uno por defecto
+    usuario_id = st.session_state.get("usuario_id") or st.session_state.get("user_id") or "ariel_mock"
+    
     # --- 1. INICIALIZACIÓN DE ESTADOS DE ENRUTAMIENTO Y DATOS ---
     if "vista_actual" not in st.session_state:
         st.session_state.vista_actual = "catalogo"
         
     if "lista_salas" not in st.session_state:
-        salas_back = obtener_salas()
-        # Si la API responde con datos, los usamos; si no, dejamos el mock de respaldo
+        # Por defecto cargamos únicamente las salas a las que pertenece este usuario
+        salas_back = obtener_mis_salas (usuario_id)
         st.session_state.lista_salas = salas_back if salas_back else ROOMS_MOCK
 
     # --- Estilos CSS Inyectados ---
@@ -76,8 +80,8 @@ def study_rooms_page():
         
         with col_title:
             st.html("""
-            <h2 style='margin-bottom: 0px; font-weight: 700; color: #111827;'>Salas de Estudio</h2>
-            <p style='color: #6b7280; font-size: 15px; margin-top: 5px;'>Únete a una sesión en vivo o crea tu propio espacio colaborativo.</p>
+            <h2 style='margin-bottom: 0px; font-weight: 700; color: #111827;'>Mis Salas de Estudio</h2>
+            <p style='color: #6b7280; font-size: 15px; margin-top: 5px;'>Gestiona tus espacios de colaboración y accede a tus sesiones.</p>
             """)
             
         with col_actions:
@@ -91,27 +95,38 @@ def study_rooms_page():
 
         st.divider()
 
-        st.radio("Filtros", options=FILTERS, horizontal=True, label_visibility="collapsed")
+        filtro_seleccionado = st.radio("Filtros", options=FILTERS, horizontal=True, label_visibility="collapsed", index=2) # Index 2 apunta a "Mis Salas" por defecto
         st.write("")
         st.write("")
 
+        # Lógica de conmutación de filtros en la UI
+        if filtro_seleccionado == "Mis Salas":
+            salas_a_mostrar = obtener_mis_salas(usuario_id) or ROOMS_MOCK
+        elif filtro_seleccionado == "Todas":
+            salas_a_mostrar = obtener_salas() or ROOMS_MOCK
+        else:
+            salas_a_mostrar = st.session_state.lista_salas
+
         # Grid dinámico de tarjetas
-        cols = st.columns(3)
-        for i, room in enumerate(st.session_state.lista_salas):
-            # MAPEO: Convertimos las llaves del backend (español) a las que espera la tarjeta (inglés)
-            room_mapeada = {
-                "id": room.get("id"),
-                "title": room.get("nombre_sala"),
-                "topic": "Sala de Estudio",
-                "icon": "📚",
-                "live": False,
-                "activeCount": 0,
-                "nextSession": f"Código de acceso: {room.get('codigo_acceso')}",
-                "members": []
-            }
-            
-            with cols[i % 3]:
-                render_room_card(room_mapeada)
+        if not salas_a_mostrar:
+            st.info("No estás inscrito en ninguna sala todavía. ¡Crea una o solicita unirte!")
+        else:
+            cols = st.columns(3)
+            for i, room in enumerate(salas_a_mostrar):
+                # MAPEO: Convertimos las llaves del backend (español) a las que espera la tarjeta (inglés)
+                room_mapeada = {
+                    "id": room.get("id"),
+                    "title": room.get("nombre_sala"),
+                    "topic": "Sala de Estudio",
+                    "icon": "📚",
+                    "live": False,
+                    "activeCount": 0,
+                    "nextSession": f"Código de acceso: {room.get('codigo_acceso')}",
+                    "members": []
+                }
+                
+                with cols[i % 3]:
+                    render_room_card(room_mapeada)
 
     # === VISTA B: FORMULARIO DE CREACIÓN (POST) ===
     elif st.session_state.vista_actual == "crear":
@@ -139,22 +154,14 @@ def study_rooms_page():
                     if not nombre_sala or not codigo_acceso:
                         st.error("Por favor completa los campos obligatorios (*)")
                     else:
-                        # Generamos un ID amigable basado en texto para mandar al backend
                         id_sala = nombre_sala.lower().strip().replace(" ", "_")
                         
-                        # Payload idéntico al esquema 'SalaEstudioCreate' del Backend
-                        nueva_sala_payload = {
-                            "id": id_sala,
-                            "nombre_sala": nombre_sala,
-                            "codigo_acceso": codigo_acceso
-                        }
-
-                        # Llamada HTTP mediante tu api_client
-                        res = crear_sala(nueva_sala_payload)
+                        # Pasamos los parámetros posicionales más el creador_id al final
+                        res = crear_sala(id_sala, nombre_sala, codigo_acceso, creador_id=usuario_id)
                         
                         if res.get("success"):
-                            # Trae la lista fresca de la API para sincronizar el catálogo
-                            st.session_state.lista_salas = obtener_salas()
+                            # Refrescamos la lista de la sesión usando el filtro del usuario
+                            st.session_state.lista_salas = obtener_mis_salas(usuario_id)
                             st.session_state.vista_actual = "catalogo"
                             st.toast(f"¡Sala '{nombre_sala}' creada exitosamente!", icon="✅")
                             st.rerun()

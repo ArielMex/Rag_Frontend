@@ -1,3 +1,6 @@
+import random
+import re
+import unicodedata
 import requests
 
 # URL base donde está corriendo el backend
@@ -126,14 +129,23 @@ def obtener_salas() -> list:
     except Exception:
         return []
 
-def crear_sala(payload_sala: dict) -> dict:
+def crear_sala(sala_id: str, nombre_sala: str, codigo_acceso: str, creador_id: str = None) -> dict:
     """
-    Envía los datos de una nueva sala al backend (id, nombre_sala, codigo_acceso).
+    Crea una nueva sala de estudio y opcionalmente asocia al creador de inmediato.
     """
     url = f"{BASE_URL}/v1/salas/crear"
+    payload = {
+        "id": sala_id,
+        "nombre_sala": nombre_sala,
+        "codigo_acceso": codigo_acceso
+    }
+    
+    parametros = {}
+    if creador_id:
+        parametros["creador_id"] = creador_id
     
     try:
-        response = requests.post(url, json=payload_sala, timeout=5)
+        response = requests.post(url, json=payload, params=parametros, timeout=5)
         
         if response.status_code in [200, 201]:
             return {"success": True, "data": response.json()}
@@ -187,3 +199,123 @@ def obtener_miembros_sala(sala_id: str) -> list:
         return []
     except Exception:
         return []
+    
+def obtener_mis_salas(usuario_id: str) -> list:
+    """
+    Obtiene las salas a las que está inscrito un usuario específico.
+    """
+    url = f"{BASE_URL}/v1/salas/mis-salas/{usuario_id}"
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            return response.json()
+        return []
+    except Exception:
+        return []
+
+def login(email: str, password: str) -> dict:
+    """
+    Inicia sesión con email y password. Devuelve access_token y refresh_token.
+    """
+    url = f"{BASE_URL}/v1/auth/login"
+    payload = {"email": email, "password": password}
+    try:
+        response = requests.post(url, json=payload, timeout=5)
+        if response.status_code == 200:
+            return {"success": True, "data": response.json()}
+        else:
+            return {"success": False, "error": response.json().get("detail", f"Error {response.status_code}")}
+    except requests.exceptions.ConnectionError:
+        return {"success": False, "error": "No se pudo conectar al servidor. Verifica que el backend esté encendido."}
+    except Exception as e:
+        return {"success": False, "error": f"Error inesperado: {str(e)}"}
+
+
+def refrescar_token(refresh_token: str) -> dict:
+    """
+    Renueva el access_token usando el refresh_token vigente.
+    """
+    url = f"{BASE_URL}/v1/auth/refresh"
+    payload = {"refresh_token": refresh_token}
+    try:
+        response = requests.post(url, json=payload, timeout=5)
+        if response.status_code == 200:
+            return {"success": True, "data": response.json()}
+        else:
+            return {"success": False, "error": response.json().get("detail", f"Error {response.status_code}")}
+    except requests.exceptions.ConnectionError:
+        return {"success": False, "error": "No se pudo conectar al servidor."}
+    except Exception as e:
+        return {"success": False, "error": f"Error inesperado: {str(e)}"}
+
+
+def obtener_usuario_actual(access_token: str) -> dict:
+    """
+    Consulta la info del token actual (GET /auth/me).
+    """
+    url = f"{BASE_URL}/v1/auth/me"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    try:
+        response = requests.get(url, headers=headers, timeout=5)
+        if response.status_code == 200:
+            return {"success": True, "data": response.json()}
+        else:
+            return {"success": False, "error": response.json().get("detail", f"Error {response.status_code}")}
+    except requests.exceptions.ConnectionError:
+        return {"success": False, "error": "No se pudo conectar al servidor."}
+    except Exception as e:
+        return {"success": False, "error": f"Error inesperado: {str(e)}"}
+
+def registrar_usuario(payload_usuario: dict) -> dict:
+    """
+    Registra un nuevo usuario (POST /users/register).
+    payload_usuario debe coincidir con tu schema real de registro,
+    p. ej. {"email": ..., "password": ..., "nombre": ...}
+    """
+    url = f"{BASE_URL}/v1/users/register"
+    try:
+        response = requests.post(url, json=payload_usuario, timeout=5)
+        if response.status_code in [200, 201]:
+            return {"success": True, "data": response.json()}
+        else:
+            return {"success": False, "error": response.json().get("detail", f"Error {response.status_code}")}
+    except requests.exceptions.ConnectionError:
+        return {"success": False, "error": "No se pudo conectar al servidor."}
+    except Exception as e:
+        return {"success": False, "error": f"Error inesperado: {str(e)}"}
+
+def generar_username(full_name: str) -> str:
+    """
+    Genera un username válido (^[a-zA-Z0-9_-]+$, 3-50 chars) a partir del nombre completo.
+    Agrega un sufijo numérico aleatorio para reducir choques de unicidad.
+    """
+    texto_normalizado = unicodedata.normalize("NFKD", full_name)
+    texto_sin_acentos = "".join(c for c in texto_normalizado if not unicodedata.combining(c))
+
+    base = texto_sin_acentos.lower().strip().replace(" ", "_")
+    base = re.sub(r"[^a-zA-Z0-9_\-]", "", base)
+
+    if len(base) < 3:
+        base = (base + "usuario")[:10]
+
+    sufijo = str(random.randint(1000, 9999))
+    username = f"{base}_{sufijo}"
+
+    return username[:50]
+
+def obtener_perfil(access_token: str) -> dict:
+    """
+    Trae el perfil completo del usuario autenticado (GET /users/me).
+    """
+    url = f"{BASE_URL}/v1/users/me"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    try:
+        response = requests.get(url, headers=headers, timeout=5)
+        if response.status_code == 200:
+            return {"success": True, "data": response.json()}
+        else:
+            return {"success": False, "error": response.json().get("detail", f"Error {response.status_code}")}
+    except requests.exceptions.ConnectionError:
+        return {"success": False, "error": "No se pudo conectar al servidor."}
+    except Exception as e:
+        return {"success": False, "error": f"Error inesperado: {str(e)}"}

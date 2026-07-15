@@ -2,7 +2,8 @@ import streamlit as st
 import time
 from utils.security import sanitize_input
 from utils.images import get_image_base64
-from utils.api_client import login
+# ¡AQUÍ AGREGAMOS obtener_perfil!
+from utils.api_client import login, obtener_perfil 
 
 try:
     from streamlit_oauth import OAuth2Component
@@ -120,6 +121,8 @@ def render_login_form():
                 st.session_state.logged_in = True
                 st.session_state.user_email = user_info.get("email")
                 st.session_state.user_name = user_info.get("name")
+                # Atrapamos el ID de Google (suele venir en 'sub')
+                st.session_state.usuario_id = user_info.get("sub") 
                 st.rerun()
 
         with st.container(border=True):
@@ -176,7 +179,6 @@ def render_login_form():
                 if submitted:
                     safe_email = sanitize_input(email)
                     if safe_email and password:
-                        # Agregamos el spinner envolviendo la llamada a la API
                         with st.spinner("Autenticando credenciales..."):
                             resultado = login(safe_email, password)
 
@@ -184,11 +186,19 @@ def render_login_form():
                                 datos = resultado["data"]
                                 st.session_state.access_token = datos["access_token"]
                                 st.session_state.refresh_token = datos["refresh_token"]
+                                
+                                # --- LA MAGIA ESTÁ AQUÍ ---
+                                # Usamos el token recién obtenido para buscar el ID real del usuario en la BD
+                                perfil_res = obtener_perfil(datos["access_token"])
+                                if perfil_res.get("success"):
+                                    # Guardamos el perfil y el ID exacto
+                                    st.session_state.user_data = perfil_res["data"]
+                                    st.session_state.usuario_id = perfil_res["data"].get("id")
+                                
                                 st.session_state.logged_in = True
                                 
-                                # Mostramos un mensaje de éxito rápido
                                 st.toast("¡Inicio de sesión exitoso!")
-                                time.sleep(0.8) # Damos tiempo a que se vea el efecto
+                                time.sleep(0.8) 
                                 st.rerun()
                             else:
                                 st.error(resultado["error"])

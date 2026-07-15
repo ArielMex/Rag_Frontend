@@ -1,3 +1,42 @@
+import streamlit as st
+from utils.api_client import obtener_perfil
+
+
+def require_login(redirect_to="main.py"):
+    """Verifica que exista una sesión válida en `st.session_state`.
+
+    - Si el estado `logged_in` está presente y hay `access_token`, intenta
+      obtener el perfil con `obtener_perfil`.
+    - Si no hay sesión válida, limpia claves de sesión relevantes y
+      redirige/forza la vista de login.
+
+    Devuelve True si la sesión parece válida, False en caso contrario.
+    """
+    try:
+        if st.session_state.get("logged_in"):
+            access_token = st.session_state.get("access_token")
+            if access_token:
+                perfil = obtener_perfil(access_token)
+                if perfil.get("success"):
+                    st.session_state["user_profile"] = perfil["data"]
+                    return True
+        # Si llegamos aquí, no hay sesión válida
+        for k in ["access_token", "refresh_token", "logged_in", "user_profile", "auth_view"]:
+            st.session_state.pop(k, None)
+        st.session_state["auth_view"] = "login"
+        try:
+            st.switch_page(redirect_to)
+        except Exception:
+            # En algunos contextos (tests o workers) switch_page puede fallar;
+            # devolvemos False y las páginas deben llamar a `st.stop()` tras esto.
+            pass
+        return False
+    except Exception:
+        # En caso de cualquier error inesperado, limpiamos y rechazamos acceso
+        for k in ["access_token", "refresh_token", "logged_in", "user_profile", "auth_view"]:
+            st.session_state.pop(k, None)
+        st.session_state["auth_view"] = "login"
+        return False
 import html
 import re
 

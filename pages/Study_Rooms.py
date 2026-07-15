@@ -1,7 +1,11 @@
 import streamlit as st
+from utils.security import require_login
 from components.sidebar import render_sidebar
 from components.salas.room_card import render_room_card
 from utils.api_client import obtener_salas, crear_sala
+
+if not require_login():
+    st.stop()
 
 # Respaldo local con la estructura del Backend por si la API está vacía o apagada
 ROOMS_MOCK = [

@@ -1,4 +1,5 @@
 import streamlit as st
+from utils.security import require_login
 
 # Importamos todas las piezas del rompecabezas
 from components.sidebar import render_sidebar
@@ -6,6 +7,10 @@ from components.dashboard.top_bar import render_top_bar
 from components.dashboard.study_metrics import render_study_metrics
 from components.documentos.upload_zone import render_upload_zone
 from components.chat.chat_panel import render_chat_conversation
+
+if not require_login():
+    st.stop()
+
 
 def dashboard_page():
     st.html("""

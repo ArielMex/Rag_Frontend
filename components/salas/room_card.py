@@ -2,7 +2,6 @@ import streamlit as st
 
 def render_room_card(room):
     with st.container(border=True):
-        
         status_bg = "#dcfce7" if room['live'] else "#f3f4f6"
         status_text = "#166534" if room['live'] else "#4b5563"
         status_dot = "● " if room['live'] else ""
@@ -57,4 +56,8 @@ def render_room_card(room):
 
         with col_btn:
             btn_type = "primary" if room['live'] else "secondary"
-            st.button("Unirse", key=f"join_{room['id']}", type=btn_type, use_container_width=True)
+            # --- AQUÍ ESTÁ LA MAGIA DEL CAMBIO DE VISTA ---
+            if st.button("Entrar", key=f"enter_{room['id']}", type=btn_type, use_container_width=True):
+                st.session_state.vista_actual = "detalle_sala"
+                st.session_state.sala_activa_ui = room['id']
+                st.rerun()

@@ -1,7 +1,11 @@
 import streamlit as st
 import urllib.parse
+from utils.security import require_login
 from components.sidebar import render_sidebar
 from utils.api_client import get_documents, upload_document, delete_document
+
+if not require_login():
+    st.stop()
 
 @st.dialog("Subir nuevo documento")
 def modal_subir_documento(sala_id):

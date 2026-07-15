@@ -1,7 +1,7 @@
-import requests
 import random
 import re
 import unicodedata
+import requests
 
 # URL base donde está corriendo el backend
 BASE_URL = "http://localhost:8000/api"
@@ -129,14 +129,23 @@ def obtener_salas() -> list:
     except Exception:
         return []
 
-def crear_sala(payload_sala: dict) -> dict:
+def crear_sala(sala_id: str, nombre_sala: str, codigo_acceso: str, creador_id: str = None) -> dict:
     """
-    Envía los datos de una nueva sala al backend (id, nombre_sala, codigo_acceso).
+    Crea una nueva sala de estudio y opcionalmente asocia al creador de inmediato.
     """
     url = f"{BASE_URL}/v1/salas/crear"
+    payload = {
+        "id": sala_id,
+        "nombre_sala": nombre_sala,
+        "codigo_acceso": codigo_acceso
+    }
+    
+    parametros = {}
+    if creador_id:
+        parametros["creador_id"] = creador_id
     
     try:
-        response = requests.post(url, json=payload_sala, timeout=5)
+        response = requests.post(url, json=payload, params=parametros, timeout=5)
         
         if response.status_code in [200, 201]:
             return {"success": True, "data": response.json()}
@@ -191,6 +200,19 @@ def obtener_miembros_sala(sala_id: str) -> list:
     except Exception:
         return []
 
+def obtener_mis_salas(usuario_id: str) -> list:
+    """
+    Obtiene las salas a las que está inscrito un usuario específico.
+    """
+    url = f"{BASE_URL}/v1/salas/mis-salas/{usuario_id}"
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            return response.json()
+        return []
+    except Exception:
+        return []
+
 def login(email: str, password: str) -> dict:
     """
     Inicia sesión con email y password. Devuelve access_token y refresh_token.
@@ -208,7 +230,6 @@ def login(email: str, password: str) -> dict:
     except Exception as e:
         return {"success": False, "error": f"Error inesperado: {str(e)}"}
 
-
 def refrescar_token(refresh_token: str) -> dict:
     """
     Renueva el access_token usando el refresh_token vigente.
@@ -225,7 +246,6 @@ def refrescar_token(refresh_token: str) -> dict:
         return {"success": False, "error": "No se pudo conectar al servidor."}
     except Exception as e:
         return {"success": False, "error": f"Error inesperado: {str(e)}"}
-
 
 def obtener_usuario_actual(access_token: str) -> dict:
     """

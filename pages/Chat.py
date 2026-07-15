@@ -1,5 +1,6 @@
 import streamlit as st
 import re
+from utils.security import require_login
 
 from components.sidebar import render_sidebar
 from utils.api_client import send_chat_message, generar_quiz_api
@@ -7,6 +8,9 @@ from utils.api_client import send_chat_message, generar_quiz_api
 # Importamos ambos paneles
 from components.chat.quiz_panel import render_quiz_panel
 from components.chat.flashcard_panel import render_flashcards_panel
+
+if not require_login():
+    st.stop()
 
 def detectar_intencion(mensaje: str):
     """

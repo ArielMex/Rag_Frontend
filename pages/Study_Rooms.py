@@ -1,8 +1,13 @@
 import streamlit as st
 import urllib.parse
+from utils.security import require_login
 from components.sidebar import render_sidebar
 from utils.images import get_image_base64
 from utils.api_client import obtener_mis_salas, obtener_salas, crear_sala, unirse_a_sala_api, upload_document, get_documents
+
+# Protegemos la ruta
+if not require_login():
+    st.stop()
 
 @st.dialog("¡Bienvenido a la sala!")
 def modal_exito_unirse(nombre_sala):
@@ -158,7 +163,7 @@ def study_rooms_page():
             salas_a_mostrar = st.session_state.lista_salas
 
         if not salas_a_mostrar:
-            st.info("Aún no tienes salas. ¡Crea una nueva arriba!")
+            st.info("Aún no tienes salas reales. ¡Crea una nueva arriba!")
         else:
             cols = st.columns(3)
             for i, room in enumerate(salas_a_mostrar):
@@ -271,7 +276,6 @@ def study_rooms_page():
                             st.markdown("##### Miembros")
                             
                             with st.container(border=True):
-                                # AQUÍ ESTABA QUEMADO "Propietario". AHORA ES DINÁMICO.
                                 st.html(f"""
                                 <div style="display: flex; align-items: center; margin-bottom: 4px;">
                                     {img_avatar_large_html}
